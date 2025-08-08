@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Widget</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: transparent;
+            overflow: hidden;
+        }
+
+        .weather-widget {
+            width: 100%;
+            height: 60px;
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .config-mode .weather-widget {
+            height: auto;
+            min-height: 200px;
+        }
+
+        .marquee {
+            height: 60px;
+            overflow: hidden;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            animation: marquee 90s linear infinite;
+            padding: 0 20px;
+            width: max-content;
+            min-width: 100%;
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
+        .weather-item {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 80px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .weather-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+            filter: brightness(0) invert(1);
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 60px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .error {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 60px;
+            color: #ff6b6b;
+            font-size: 12px;
+            background: #fff;
+            border: 2px solid #ff6b6b;
+            border-radius: 8px;
+        }
+
+        .config-panel {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .config-mode .config-panel {
+            display: block;
+        }
+
+        .config-mode .marquee {
+            display: none;
+        }
+
+        .config-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input, .form-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .cities-input {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: #0984e3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .btn:hover {
+            background: #74b9ff;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .config-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            border-radius: 4px;
+            padding: 5px 8px;
+            cursor: pointer;
+            font-size: 12px;
+            z-index: 10;
+        }
+
+        .config-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .help-text {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .refresh-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .last-updated {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.8);
+            position: absolute;
+            bottom: 5px;
+            right: 10px;
+        }
+
+        @media (max-width: 480px) {
+            .weather-item {
+                font-size: 12px;
+                margin-right: 60px;
+            }
+            
+            .weather-icon {
+                width: 20px;
+                height: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="weather-widget">
+        <button class="config-toggle" onclick="toggleConfig()">⚙️</button>
+        
+        <div class="marquee" id="marquee">
+            <div class="loading">載入天氣資料中...</div>
+        </div>
+
+        <div class="last-updated" id="lastUpdated"></div>
+
+        <div class="config-panel">
+            <div class="config-form">
+                <h3 style="margin-bottom: 15px; color: #333;">天氣小工具設定</h3>
+                
+                <div class="form-group">
+                    <label for="apiKey">Windy API 金鑰</label>
+                    <input type="password" id="apiKey" placeholder="輸入您的 API 金鑰">
+                    <div class="help-text">從 <a href="https://api.windy.com/" target="_blank">Windy API</a> 取得您的 API 金鑰</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="locations">地點 (每行一個)</label>
+                    <textarea id="locations" class="cities-input" placeholder="東京, 35.6762, 139.6503&#10;倫敦, 51.5074, -0.1278&#10;紐約, 40.7128, -74.0060&#10;雪梨, -33.8688, 151.2093"></textarea>
+                    <div class="help-text">輸入格式：地點名稱, 緯度, 經度 (每行一個)</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="units">溫度單位</label>
+                    <select id="units">
+                        <option value="metric">攝氏 (°C)</option>
+                        <option value="imperial">華氏 (°F)</option>
+                        <option value="kelvin">開氏 (K)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="refreshInterval">自動更新間隔 (分鐘)</label>
+                    <select id="refreshInterval">
+                        <option value="5">5 分鐘</option>
+                        <option value="10" selected>10 分鐘</option>
+                        <option value="15">15 分鐘</option>
+                        <option value="30">30 分鐘</option>
+                        <option value="60">1 小時</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn" onclick="saveConfig()">儲存並更新</button>
+                    <button class="btn btn-secondary" onclick="toggleConfig()">取消</button>
+                </div>
+
+                <div class="refresh-info">
+                    <span>天氣資料自動更新中</span>
+                    <button class="btn" onclick="refreshWeather()" style="padding: 5px 10px; font-size: 12px;">立即更新</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration management
+        const CONFIG_KEY = 'weather-widget-config';
+        let config = {
+            apiKey: '',
+            locations: [
+                { name: 'Tokyo', lat: 35.6762, lon: 139.6503 },
+                { name: 'London', lat: 51.5074, lon: -0.1278 },
+                { name: 'New York', lat: 40.7128, lon: -74.0060 },
+                { name: 'Sydney', lat: -33.8688, lon: 151.2093 }
+            ],
+            units: 'metric',
+            refreshInterval: 10
+        };
+
+        let refreshTimer = null;
+        let isConfigMode = false;
+
+        // Weather icon mapping
+        const weatherIcons = {
+            '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️',
+            '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️',
+            '09d': '🌧️', '09n': '🌧️', '10d': '🌦️', '10n': '🌧️',
+            '11d': '⛈️', '11n': '⛈️', '13d': '❄️', '13n': '❄️',
+            '50d': '🌫️', '50n': '🌫️'
+        };
+
+        // Initialize widget
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfig();
+            initializeWidget();
+        });
+
+        function loadConfig() {
+            const stored = localStorage.getItem(CONFIG_KEY);
+            if (stored) {
+                config = { ...config, ...JSON.parse(stored) };
+            }
+            
+            // Try to get API key from environment or URL params
+            const urlParams = new URLSearchParams(window.location.search);
+            const envApiKey = urlParams.get('apiKey') || 
+                             (typeof process !== 'undefined' && process.env && process.env.WINDY_API_KEY) ||
+                             config.apiKey;
+            
+            if (envApiKey) {
+                config.apiKey = envApiKey;
+            }
+
+            // Load locations from URL params if provided
+            const urlLocations = urlParams.get('locations');
+            if (urlLocations) {
+                const locationParts = urlLocations.split(';');
+                config.locations = locationParts.map(loc => {
+                    const [name, lat, lon] = loc.split(',').map(s => s.trim());
+                    return { name, lat: parseFloat(lat), lon: parseFloat(lon) };
+                }).filter(loc => loc.name && !isNaN(loc.lat) && !isNaN(loc.lon));
+            }
+
+            // Load units from URL params if provided
+            const urlUnits = urlParams.get('units');
+            if (urlUnits && ['metric', 'imperial', 'kelvin'].includes(urlUnits)) {
+                config.units = urlUnits;
+            }
+        }
+
+        function saveConfig() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const locationsText = document.getElementById('locations').value
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+            
+            const locations = locationsText.map(line => {
+                const parts = line.split(',').map(s => s.trim());
+                if (parts.length >= 3) {
+                    const name = parts[0];
+                    const lat = parseFloat(parts[1]);
+                    const lon = parseFloat(parts[2]);
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        return { name, lat, lon };
+                    }
+                }
+                return null;
+            }).filter(loc => loc !== null);
+
+            const units = document.getElementById('units').value;
+            const refreshInterval = parseInt(document.getElementById('refreshInterval').value);
+
+            if (!apiKey) {
+                alert('請輸入您的 Windy API 金鑰');
+                return;
+            }
+
+            if (locations.length === 0) {
+                alert('請輸入至少一個有效的地點和座標');
+                return;
+            }
+
+            config = { apiKey, locations, units, refreshInterval };
+            localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+            
+            toggleConfig();
+            refreshWeather();
+        }
+
+        function toggleConfig() {
+            isConfigMode = !isConfigMode;
+            document.body.classList.toggle('config-mode', isConfigMode);
+            
+            if (isConfigMode) {
+                // Populate form with current config
+                document.getElementById('apiKey').value = config.apiKey || '';
+                document.getElementById('locations').value = config.locations
+                    .map(loc => `${loc.name}, ${loc.lat}, ${loc.lon}`)
+                    .join('\n');
+                document.getElementById('units').value = config.units;
+                document.getElementById('refreshInterval').value = config.refreshInterval;
+            }
+        }
+
+        function initializeWidget() {
+            if (!config.apiKey) {
+                showConfigMessage();
+                return;
+            }
+            
+            refreshWeather();
+            setupAutoRefresh();
+        }
+
+        function showConfigMessage() {
+            const marquee = document.getElementById('marquee');
+            marquee.innerHTML = '<div class="error">點擊 ⚙️ 設定您的 Windy API 金鑰和地點</div>';
+        }
+
+        function setupAutoRefresh() {
+            if (refreshTimer) {
+                clearInterval(refreshTimer);
+            }
+            
+            const intervalMs = config.refreshInterval * 60 * 1000;
+            refreshTimer = setInterval(refreshWeather, intervalMs);
+        }
+
+        async function refreshWeather() {
+            if (!config.apiKey || config.locations.length === 0) {
+                showConfigMessage();
+                return;
+            }
+
+            const marquee = document.getElementById('marquee');
+            marquee.innerHTML = '<div class="loading">更新天氣資料中...</div>';
+
+            try {
+                const weatherData = await fetchWeatherData();
+                displayWeatherData(weatherData);
+                updateLastUpdatedTime();
+                setupAutoRefresh();
+            } catch (error) {
+                console.error('Error fetching weather data:', error);
+            marquee.innerHTML = `<div class="error">載入天氣資料失敗: ${error.message}</div>`;
+            }
+        }
+
+        async function fetchWeatherData() {
+            const promises = config.locations.map(async (location) => {
+                const url = 'https://api.windy.com/api/point-forecast/v2';
+                
+                // Windy API always returns temperature in Kelvin, regardless of units parameter
+                const payload = {
+                    lat: Math.round(location.lat * 100) / 100, // Round to 2 decimals as required by Windy
+                    lon: Math.round(location.lon * 100) / 100,
+                    model: 'gfs', // Global Forecast System model
+                    parameters: ['temp', 'rh', 'pressure', 'precip', 'lclouds', 'mclouds', 'hclouds'],
+                    levels: ['surface'],
+                    key: config.apiKey
+                };
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch data for ${location.name}: ${response.status} ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                // Add location info to the response
+                data.locationName = location.name;
+                data.lat = location.lat;
+                data.lon = location.lon;
+                
+                return data;
+            });
+
+            const results = await Promise.allSettled(promises);
+            const weatherData = [];
+
+            results.forEach((result, index) => {
+                if (result.status === 'fulfilled') {
+                    weatherData.push(result.value);
+                } else {
+                    console.warn(`Failed to fetch weather for ${config.locations[index].name}:`, result.reason);
+                }
+            });
+
+            if (weatherData.length === 0) {
+                throw new Error('No weather data could be retrieved for any location');
+            }
+
+            return weatherData;
+        }
+
+        function displayWeatherData(weatherData) {
+            console.log('Displaying weather data for', weatherData.length, 'locations:', weatherData);
+            const marquee = document.getElementById('marquee');
+            const items = weatherData.map(data => {
+                // Windy API returns time series data, we use the first (current) data point
+                const tempKey = 'temp-surface';
+                const rhKey = 'rh-surface';
+                const pressureKey = 'pressure-surface';
+                const precipKey = 'past3hprecip-surface';
+                const lcloudsKey = 'lclouds-surface';
+                const mcloudsKey = 'mclouds-surface';
+                const hcloudsKey = 'hclouds-surface';
+                
+                console.log('Available data keys:', Object.keys(data));
+                
+                // Get current values (first in the array)
+                // Windy API returns temperature in Kelvin, convert based on user preference
+                let temp = data[tempKey] ? data[tempKey][0] : null;
+                if (temp !== null) {
+                    if (config.units === 'metric') {
+                        temp = Math.round(temp - 273.15); // Kelvin to Celsius
+                    } else if (config.units === 'imperial') {
+                        temp = Math.round((temp - 273.15) * 9/5 + 32); // Kelvin to Fahrenheit
+                    } else {
+                        temp = Math.round(temp); // Keep as Kelvin
+                    }
+                } else {
+                    temp = 'N/A';
+                }
+                
+                const humidity = data[rhKey] ? Math.round(data[rhKey][0]) : 'N/A';
+                const pressure = data[pressureKey] ? Math.round(data[pressureKey][0]) : 'N/A';
+                const precip = data[precipKey] ? Math.round(data[precipKey][0] * 100) / 100 : 0;
+                
+                // Calculate overall cloud coverage from low, medium, and high clouds
+                const lowClouds = data[lcloudsKey] ? data[lcloudsKey][0] : 0;
+                const midClouds = data[mcloudsKey] ? data[mcloudsKey][0] : 0;
+                const highClouds = data[hcloudsKey] ? data[hcloudsKey][0] : 0;
+                const totalClouds = Math.round(Math.max(lowClouds, midClouds, highClouds));
+                
+                // Determine weather condition icon based on precipitation, clouds, and humidity
+                let icon = '🌤️'; // default
+                if (precip > 0.5) {
+                    icon = '🌧️'; // rain
+                } else if (precip > 0) {
+                    icon = '🌦️'; // light rain
+                } else if (totalClouds > 75) {
+                    icon = '☁️'; // cloudy
+                } else if (totalClouds > 40) {
+                    icon = '⛅'; // partly cloudy
+                } else if (totalClouds < 20 && humidity < 60) {
+                    icon = '☀️'; // sunny
+                } else {
+                    icon = '🌤️'; // fair
+                }
+                
+                const tempUnit = config.units === 'imperial' ? '°F' : 
+                               config.units === 'kelvin' ? 'K' : '°C';
+
+                return `
+                    <span class="weather-item">
+                        <span class="weather-icon">${icon}</span>
+                        <strong>${data.locationName}</strong> 
+                        ${temp}${tempUnit} • 
+                        濕度: ${humidity}% • 
+                        雲量: ${totalClouds}% • 
+                        降雨: ${precip}mm
+                    </span>
+                `;
+            }).join('');
+
+            console.log('Generated HTML items:', items);
+            marquee.innerHTML = items;
+        }
+
+        function updateLastUpdatedTime() {
+            const lastUpdated = document.getElementById('lastUpdated');
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            lastUpdated.textContent = `更新時間: ${timeString}`;
+        }
+
+        // Handle page visibility changes to pause/resume when tab is not active
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                if (refreshTimer) {
+                    clearInterval(refreshTimer);
+                    refreshTimer = null;
+                }
+            } else {
+                setupAutoRefresh();
+            }
+        });
+
+        // Handle window resize for responsive behavior
+        window.addEventListener('resize', function() {
+            // Restart animation on resize to prevent layout issues
+            const marquee = document.getElementById('marquee');
+            if (marquee.children.length > 0 && !marquee.children[0].classList.contains('loading') && !marquee.children[0].classList.contains('error')) {
+                marquee.style.animation = 'none';
+                setTimeout(() => {
+                    marquee.style.animation = 'marquee 30s linear infinite';
+                }, 10);
+            }
+        });
+    </script>
+</body>
+</html>
