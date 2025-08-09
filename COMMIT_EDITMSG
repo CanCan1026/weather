@@ -1,0 +1,8 @@
+Adjust scrolling weather display animation duration
+
+Update the CSS animation duration for the marquee effect in index.html from 120s to 90s.
+
+Replit-Commit-Author: Agent
+Replit-Commit-Session-Id: cb6ec55e-0e67-420c-8292-f5a0d864d2a5
+Replit-Commit-Checkpoint-Type: full_checkpoint
+Replit-Commit-Screenshot-Url: https://storage.googleapis.com/screenshot-production-us-central1/d7d912c9-a782-4f2f-a653-8f3990a149ce/cb6ec55e-0e67-420c-8292-f5a0d864d2a5/Q5gticc
